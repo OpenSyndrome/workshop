@@ -65,6 +65,36 @@ sprintf(
 head(sia, 10)
 ```
 
+::: {.callout-note collapse="true"}
+## Where this data comes from
+
+DATASUS SIASUS, group `BI` (*Boletim de Produção Ambulatorial Individualizado*) — the
+patient-level outpatient record of Brazil's Unified Health System. Collected with
+[PySUS](https://github.com/AlertaDengue/PySUS) from the DATASUS public FTP for the 48
+processing months of 2014-01 to 2017-12, the years of the Zika epidemic, and published as
+[anapaulagomes/sia-pe-2014-2017](https://huggingface.co/datasets/anapaulagomes/sia-pe-2014-2017).
+
+**Curation.** De-identified upstream: no patient card number, birth date reduced to a year,
+ethnicity removed. Sex codes decoded to `Female` / `Male`, the six-digit DATASUS municipality
+code resolved to a city and a state through the IBGE API, `YYYYMM` dates to `YYYY-MM`.
+DATASUS stores age as a number plus a unit — days and months both mean under a year, and a
+separate unit counts the years past 100 — all collapsed into whole years, then bucketed into
+`age_group`: Infants under 1, Children and adolescents 1-15, Adults 16-59, Elderly 60+.
+DATASUS files carry no real nulls, only fill codes, so the `0000` diagnosis fill, the `99`
+ignored-age sentinel and unusable municipality codes were read as missing and their records
+dropped: 6.6M of the 17.6M raw records survive, the absent diagnosis alone accounting for 10.7M.
+
+**Read it carefully.** A row is a procedure billed to the SUS, not a confirmed case, and one
+patient can appear many times. The finest time resolution is the month, so there is no
+epidemiological week. Billing is retroactive, which is why 8,435 rows have an attendance month
+back in 2013. `city` is the patient's municipality of residence, not where they were seen:
+27 states appear, though 98.5% of the records are in Pernambuco. 6,704 distinct ICD-10 codes
+are present.
+
+**License.** The records are public data produced by the SUS under Lei 12.527/2011 and Decreto
+8.777/2016; the curation layer is CC BY 4.0. Cite DATASUS for the data.
+:::
+
 ## 2. Map your columns to OSD concepts
 
 A definition talks about *concepts* — `diagnosis`, `symptom`, `demographic_criteria`,
