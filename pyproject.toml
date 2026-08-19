@@ -1,0 +1,19 @@
+[project]
+name = "osi-workshop"
+version = "0.1.0"
+description = "Open Syndrome Initiative workshop: filtering health data with OSD definitions"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "marimo>=0.21.0",
+    "opensyndrome @ git+https://github.com/OpenSyndrome/open-syndrome-python.git@main",
+    "plotly>=6.2.0",
+    "polars>=1.38.1",
+    "pyyaml>=6.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.hatch.metadata]
+allow-direct-references = true
