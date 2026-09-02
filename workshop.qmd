@@ -26,13 +26,13 @@ install.packages(c("dplyr", "ggplot2", "jsonlite", "knitr", "nanoparquet", "remo
 remotes::install_github("OpenSyndrome/open-syndrome-r")
 ```
 
+The `setup` chunk must run before any other, and again after restarting R.
+
 ```{r}
 #| label: setup
 #| message: false
 library(opensyndrome)
-library(dplyr)
 library(ggplot2)
-library(nanoparquet)
 ```
 
 ## 1. The data
@@ -45,8 +45,8 @@ SIA writes codes without the dot (`A929`) and OSD definitions use `A92.9`, so we
 
 ```{r}
 #| label: data
-sia <- read_parquet("workshop_sia_bi.parquet") |>
-  mutate(
+sia <- nanoparquet::read_parquet("workshop_sia_bi.parquet") |>
+  dplyr::mutate(
     icd10_dotted = ifelse(
       nchar(icd10) > 3,
       paste0(substr(icd10, 1, 3), ".", substr(icd10, 4, nchar(icd10))),
@@ -241,8 +241,8 @@ sprintf(
 
 ```{r}
 labelled |>
-  filter(arboviral_illness) |>
-  select(icd10, icd10_dotted, age_years, sex, attendance_month, city) |>
+  dplyr::filter(arboviral_illness) |>
+  dplyr::select(icd10, icd10_dotted, age_years, sex, attendance_month, city) |>
   head(10)
 ```
 
@@ -252,9 +252,9 @@ labelled |>
 #| label: monthly-helper
 monthly_counts <- function(labelled_df, names, month_column = "attendance_month") {
   labelled_df |>
-    mutate(month = as.Date(paste0(.data[[month_column]], "-01"))) |>
-    summarise(across(all_of(names), sum), .by = month) |>
-    arrange(month) |>
+    dplyr::mutate(month = as.Date(paste0(.data[[month_column]], "-01"))) |>
+    dplyr::summarise(dplyr::across(all_of(names), sum), .by = month) |>
+    dplyr::arrange(month) |>
     tidyr::pivot_longer(all_of(names), names_to = "definition", values_to = "matches")
 }
 
@@ -294,14 +294,14 @@ os_definition_dirs()
 
 find_definitions <- function(terms) {
   lapply(terms, \(term) os_list(disease = term)) |>
-    bind_rows() |>
-    distinct()
+    dplyr::bind_rows() |>
+    dplyr::distinct()
 }
 
 search_terms <- c("arbovirosis", "arbovirus", "zika", "dengue")
 catalogue <- find_definitions(search_terms)
 
-catalogue |> select(name, title, disease, location, organization)
+catalogue |> dplyr::select(name, title, disease, location, organization)
 ```
 
 `os_load()` takes a name from the cache, a local file, or a URL.
@@ -317,7 +317,7 @@ repo_summary <- tibble::tibble(
   location = catalogue$location,
   matches = sapply(catalogue$name, \(name) sum(repo_labelled[[name]]))
 ) |>
-  arrange(desc(matches))
+  dplyr::arrange(dplyr::desc(matches))
 
 repo_summary
 ```
@@ -418,8 +418,8 @@ Same search, one more directory.
 all_catalogue <- find_definitions(search_terms)
 
 all_catalogue |>
-  mutate(source = ifelse(name %in% catalogue$name, "community", "local")) |>
-  select(name, source, title, location)
+  dplyr::mutate(source = ifelse(name %in% catalogue$name, "community", "local")) |>
+  dplyr::select(name, source, title, location)
 ```
 
 ```{r}
@@ -435,7 +435,7 @@ all_summary <- tibble::tibble(
   location = all_catalogue$location,
   matches = sapply(all_catalogue$name, \(name) sum(all_labelled[[name]]))
 ) |>
-  arrange(desc(matches))
+  dplyr::arrange(dplyr::desc(matches))
 
 all_summary
 ```
