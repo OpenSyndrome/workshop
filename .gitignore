@@ -16,3 +16,6 @@ workshop_files/
 Rplots.pdf
 .Rhistory
 .Rproj.user/
+
+# Local definitions written by workshop.py
+my_definitions/

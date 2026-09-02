@@ -3,7 +3,7 @@
 # dependencies = [
 #     "jsonschema==4.26.0",
 #     "marimo",
-#     "opensyndrome==0.4.0",
+#     "opensyndrome==0.5.0",
 #     "plotly==6.9.0",
 #     "polars==1.43.2",
 #     "pyyaml==6.0.3",
@@ -13,7 +13,7 @@
 import marimo
 
 __generated_with = "0.24.0"
-app = marimo.App(width="medium", app_title="Open Syndrome Workshop")
+app = marimo.App(width="full", app_title="Open Syndrome Workshop")
 
 
 @app.cell
@@ -26,14 +26,14 @@ def _():
     import plotly.graph_objects as go
     import polars as pl
     import yaml
-    from opensyndrome.artifacts import get_definition_dir
+    from opensyndrome.artifacts import get_definition_dirs
     from opensyndrome.filter import OSDEngine, load_profile
     from opensyndrome.validators import validate_machine_readable_format
 
     return (
         OSDEngine,
         Path,
-        get_definition_dir,
+        get_definition_dirs,
         go,
         json,
         jsonschema,
@@ -432,11 +432,37 @@ def _(mo):
     ## 6. Definitions from the community repository
 
     Definitions are shared in [OpenSyndrome/definitions](https://github.com/OpenSyndrome/definitions).
-    `get_definition_dir()` downloads them once to `~/.open_syndrome/`. Same data, same
-    mapping, same engine — only the definitions change, and they were written by other
-    people for other places.
+    `get_definition_dirs()` downloads them once to `~/.open_syndrome/v1/definitions/` and
+    returns the directories to read. Same data, same mapping, same engine — only the
+    definitions change, and they were written by other people for other places.
     """)
     return
+
+
+@app.cell
+def _(json):
+    def find_definitions(directories, terms):
+        """Paths of the definitions whose file name, title or keywords contain any term.
+
+        Later directories win on a name clash, so a file of yours shadows a community one.
+        """
+        found = {}
+        for directory in directories:
+            for filepath in sorted(directory.glob("**/*.json")):
+                definition = json.loads(filepath.read_text())
+                haystack = " ".join(
+                    [
+                        filepath.stem,
+                        definition.get("title", ""),
+                        *definition.get("keywords", []),
+                        *definition.get("target_public_health_threats", []),
+                    ]
+                ).lower()
+                if any(term in haystack for term in terms):
+                    found[filepath.stem] = filepath
+        return found
+
+    return (find_definitions,)
 
 
 @app.cell
@@ -451,27 +477,18 @@ def _(mo):
 
 
 @app.cell
-def _(get_definition_dir, json, search_input):
+def _(find_definitions, get_definition_dirs, json, search_input):
     terms = [
         term.strip().lower()
         for term in (search_input.value or "arbovirosis, arbovirus, zika").split(",")
         if term.strip()
     ]
 
-    repo_definitions = {}
-    for _filepath in sorted(get_definition_dir().glob("**/*.json")):
-        _found = json.loads(_filepath.read_text())
-        _haystack = " ".join(
-            [
-                _filepath.stem,
-                _found.get("title", ""),
-                *_found.get("keywords", []),
-                *_found.get("target_public_health_threats", []),
-            ]
-        ).lower()
-        if any(term in _haystack for term in terms):
-            repo_definitions[_filepath.stem] = _found
-    return (repo_definitions,)
+    repo_definitions = {
+        name: json.loads(filepath.read_text())
+        for name, filepath in find_definitions(get_definition_dirs(), terms).items()
+    }
+    return repo_definitions, terms
 
 
 @app.cell
@@ -531,6 +548,173 @@ def _(mo, repo_definitions):
                 {name: mo.json(found) for name, found in repo_definitions.items()}
             )
         }
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
+    ## 7. Your own definitions, next to the catalogue
+
+    A definition you are still drafting, or one specific to your service, does not have
+    to be published on GitHub before you can use it. Since `opensyndrome` 0.5.0 the
+    library also reads a directory you own: `get_definition_dirs(local_dir=...)` returns
+    the community directory followed by yours, and the same search from section 6 covers
+    both. Outside a notebook, set `OPENSYNDROME_DEFINITIONS_DIR=./my_definitions` instead
+    of passing the argument. To skip the catalogue, and its download, altogether, add
+    `OPENSYNDROME_LOCAL_DEFINITIONS_ONLY=1` or pass `local_only=True`.
+
+    The definition below is written to `my_definitions/` next to this notebook. Zika itself
+    barely shows up in outpatient billing, but its consequence does: microcephaly (`Q02`) in
+    young children, the signal that made Pernambuco declare an emergency in late 2015. No
+    community definition covers it, which is exactly when you write your own. It uses the
+    `age` mapping from section 2. Edit it and **Submit**: the file is rewritten and
+    everything below re-runs.
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    INITIAL_LOCAL_DEFINITION = """{
+      "title": "Microcephaly in young children",
+      "scope": "broad",
+      "category": "suspected",
+      "version": "0.1.0",
+      "open_syndrome_version": "1.0.0",
+      "published_in": "https://github.com/anapaulagomes/osi-workshop",
+      "published_at": "2026-09-02T12:00:00Z",
+      "location": "Pernambuco, Brazil",
+      "language": "English",
+      "organization": "Open Syndrome workshop",
+      "definition_type": "syndrome_definition",
+      "status": "draft",
+      "keywords": ["zika", "microcephaly", "congenital zika syndrome"],
+      "target_public_health_threats": ["Zika", "Microcephaly"],
+      "human_readable_definition": "Outpatient record coded as microcephaly in a child aged two or younger, a proxy for congenital Zika syndrome.",
+      "references": [{"url": "https://icd.who.int/browse10/2019/en#/Q02"}],
+      "inclusion_criteria": [
+        {
+          "type": "criterion",
+          "logical_operator": "AND",
+          "values": [
+            {"type": "diagnosis", "name": "Microcephaly",
+             "code": {"system": "ICD-10", "code": "Q02"}},
+            {"type": "demographic_criteria", "name": "Aged two or younger",
+             "attribute": "age", "operator": "<=", "value": 2}
+          ]
+        }
+      ]
+    }
+    """
+
+    local_editor = mo.ui.code_editor(value=INITIAL_LOCAL_DEFINITION, language="json").form(
+        label="Local definition (JSON)", bordered=True
+    )
+    local_editor
+    return INITIAL_LOCAL_DEFINITION, local_editor
+
+
+@app.cell
+def _(
+    INITIAL_LOCAL_DEFINITION,
+    Path,
+    json,
+    jsonschema,
+    local_editor,
+    mo,
+    validate_machine_readable_format,
+):
+    _raw = local_editor.value if local_editor.value is not None else INITIAL_LOCAL_DEFINITION
+
+    try:
+        _local_definition = json.loads(_raw)
+    except json.JSONDecodeError as _error:
+        mo.stop(True, mo.callout(mo.md(f"**Invalid JSON:** {_error}"), kind="danger"))
+
+    try:
+        validate_machine_readable_format(_local_definition)
+    except jsonschema.ValidationError as _error:
+        mo.stop(
+            True,
+            mo.callout(
+                mo.md(f"**Not written, it does not match the OSD schema:** {_error.message}"),
+                kind="warn",
+            ),
+        )
+
+    # The file name is what the catalogue search reports as the definition's name.
+    LOCAL_DIR = ((mo.notebook_dir() or Path.cwd()) / "my_definitions").resolve()
+    LOCAL_DIR.mkdir(exist_ok=True)
+    local_file = LOCAL_DIR / "microcephaly_young_children.json"
+    local_file.write_text(json.dumps(_local_definition, indent=2) + "\n")
+
+    mo.callout(mo.md(f"Written to `{local_file}`."), kind="success")
+    return LOCAL_DIR, local_file
+
+
+@app.cell
+def _(LOCAL_DIR, get_definition_dirs, local_file, mo):
+    definition_dirs = get_definition_dirs(local_dir=LOCAL_DIR)
+
+    mo.md(
+        "Directories the engine reads, in lookup order:\n\n"
+        + "\n".join(f"1. `{directory}`" for directory in definition_dirs)
+        + f"\n\nThe local one holds `{local_file.name}`."
+    )
+    return (definition_dirs,)
+
+
+@app.cell
+def _(LOCAL_DIR, definition_dirs, df, engine, find_definitions, json, mo, pl, terms):
+    _paths = find_definitions(definition_dirs, terms)
+    mo.stop(
+        not _paths,
+        mo.callout(mo.md("No definition matched those terms."), kind="warn"),
+    )
+
+    all_definitions = {name: json.loads(path.read_text()) for name, path in _paths.items()}
+    all_labeled = engine.label(df, all_definitions)
+
+    all_summary = pl.DataFrame(
+        {
+            "definition": list(all_definitions),
+            "source": [
+                "local" if path.is_relative_to(LOCAL_DIR) else "community"
+                for path in _paths.values()
+            ],
+            "location": [found.get("location", "") for found in all_definitions.values()],
+            "matches": [all_labeled[name].sum() for name in all_definitions],
+        }
+    ).sort("matches", descending=True)
+
+    all_summary
+    return all_labeled, all_summary
+
+
+@app.cell
+def _(all_labeled, all_summary, plot_monthly):
+    plot_monthly(
+        all_labeled,
+        all_summary.filter(all_summary["matches"] > 0)["definition"].to_list(),
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    mo.callout(
+        mo.md(
+            """
+    Same search, one more directory. Nothing about the local file is special: drop any
+    valid OSD JSON into `my_definitions/` and it shows up here. The curve is the one
+    Pernambuco saw: a handful of records a month until late 2015, hundreds a month from
+    2016 on. When a definition is ready for other people, open a pull request to
+    [OpenSyndrome/definitions](https://github.com/OpenSyndrome/definitions).
+    """
+        ),
+        kind="info",
     )
     return
 

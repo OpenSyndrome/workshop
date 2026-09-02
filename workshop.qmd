@@ -280,8 +280,9 @@ monthly_counts(labelled, "arboviral_illness") |> plot_monthly()
 
 Definitions are shared in [OpenSyndrome/definitions](https://github.com/OpenSyndrome/definitions).
 `os_download_definitions()` mirrors them into `~/.open_syndrome/v1` (the same cache the
-Python package uses) and `os_list()` searches what you have. Same data, same mapping, same
-engine — only the definitions change, and they were written by other people for other places.
+Python package uses), `os_definition_dirs()` tells you which directories are read, and
+`os_list()` searches what you have. Same data, same mapping, same engine — only the
+definitions change, and they were written by other people for other places.
 
 ```{r}
 #| label: download
@@ -289,9 +290,16 @@ engine — only the definitions change, and they were written by other people fo
 # Download once; skip it when the cache is already populated
 if (nrow(os_list()) == 0) os_download_definitions()
 
-catalogue <- lapply(c("arbovirosis", "arbovirus", "zika", "dengue"), \(term) os_list(disease = term)) |>
-  bind_rows() |>
-  distinct()
+os_definition_dirs()
+
+find_definitions <- function(terms) {
+  lapply(terms, \(term) os_list(disease = term)) |>
+    bind_rows() |>
+    distinct()
+}
+
+search_terms <- c("arbovirosis", "arbovirus", "zika", "dengue")
+catalogue <- find_definitions(search_terms)
 
 catalogue |> select(name, title, disease, location, organization)
 ```
@@ -337,4 +345,112 @@ exists to make explicit.
 ```{r}
 os_describe(repo_definitions$zika_paho)
 ```
+:::
+
+## 7. Your own definitions, next to the catalogue
+
+A definition you are still drafting, or one specific to your service, does not have to be
+published on GitHub before you can use it. The package also reads a directory you own:
+point `OPENSYNDROME_DEFINITIONS_DIR` at it and `os_definition_dirs()` returns the community
+directory followed by yours, so `os_list()` and `os_load()` see both. The package never
+writes to that directory. Set the variable in your `.Renviron` (see
+`usethis::edit_r_environ()`) or, as here, with `Sys.setenv()`. To skip the catalogue
+altogether, add `OPENSYNDROME_LOCAL_DEFINITIONS_ONLY=1`, or pass `local_only = TRUE` to
+`os_definition_dirs()`.
+
+Zika itself barely shows up in outpatient billing, but its consequence does: microcephaly
+(`Q02`) in young children, the signal that made Pernambuco declare an emergency in late
+2015. No community definition covers it, which is exactly when you write your own. This one
+uses the `age` mapping from section 2 and lists `Zika` among its threats, so the same search
+as in section 6 finds it. We write it to `my_definitions/`, next to this notebook.
+
+```{r}
+#| label: local-definition
+local_definition_json <- '{
+  "title": "Microcephaly in young children",
+  "scope": "broad",
+  "category": "suspected",
+  "version": "0.1.0",
+  "open_syndrome_version": "1.0.0",
+  "published_in": "https://github.com/anapaulagomes/osi-workshop",
+  "published_at": "2026-09-02T12:00:00Z",
+  "location": "Pernambuco, Brazil",
+  "language": "English",
+  "organization": "Open Syndrome workshop",
+  "definition_type": "syndrome_definition",
+  "status": "draft",
+  "keywords": ["zika", "microcephaly", "congenital zika syndrome"],
+  "target_public_health_threats": ["Zika", "Microcephaly"],
+  "human_readable_definition": "Outpatient record coded as microcephaly in a child aged two or younger, a proxy for congenital Zika syndrome.",
+  "references": [{"url": "https://icd.who.int/browse10/2019/en#/Q02"}],
+  "inclusion_criteria": [
+    {
+      "type": "criterion",
+      "logical_operator": "AND",
+      "values": [
+        {"type": "diagnosis", "name": "Microcephaly",
+         "code": {"system": "ICD-10", "code": "Q02"}},
+        {"type": "demographic_criteria", "name": "Aged two or younger",
+         "attribute": "age", "operator": "<=", "value": 2}
+      ]
+    }
+  ]
+}'
+
+local_definition <- jsonlite::fromJSON(local_definition_json, simplifyVector = FALSE)
+os_validate(local_definition)
+
+# The file name is what os_list() reports as the definition's name
+dir.create("my_definitions", showWarnings = FALSE)
+writeLines(local_definition_json, "my_definitions/microcephaly_young_children.json")
+```
+
+```{r}
+#| label: local-dirs
+Sys.setenv(OPENSYNDROME_DEFINITIONS_DIR = "my_definitions")
+os_definition_dirs()
+```
+
+Same search, one more directory.
+
+```{r}
+#| label: local-list
+all_catalogue <- find_definitions(search_terms)
+
+all_catalogue |>
+  mutate(source = ifelse(name %in% catalogue$name, "community", "local")) |>
+  select(name, source, title, location)
+```
+
+```{r}
+#| label: local-label
+#| warning: false
+all_definitions <- setNames(lapply(all_catalogue$name, os_load), all_catalogue$name)
+
+all_labelled <- os_label(sia, all_definitions, profile)
+
+all_summary <- tibble::tibble(
+  definition = all_catalogue$name,
+  source = ifelse(all_catalogue$name %in% catalogue$name, "community", "local"),
+  location = all_catalogue$location,
+  matches = sapply(all_catalogue$name, \(name) sum(all_labelled[[name]]))
+) |>
+  arrange(desc(matches))
+
+all_summary
+```
+
+```{r}
+#| label: local-timeseries
+#| fig-height: 3.5
+monthly_counts(all_labelled, all_summary$definition[all_summary$matches > 0]) |> plot_monthly()
+```
+
+::: callout-tip
+## Nothing about the local file is special
+
+Drop any valid OSD JSON into `my_definitions/` and it shows up here. The curve is the one
+Pernambuco saw: a handful of records a month until late 2015, hundreds a month from 2016
+on. When a definition is ready for other people, open a pull request to
+[OpenSyndrome/definitions](https://github.com/OpenSyndrome/definitions).
 :::

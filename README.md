@@ -8,6 +8,8 @@ then do it again with the arbovirosis and Zika definitions from the
 
 Run from the repository root — both read `workshop_sia_bi.parquet` from the working
 directory. The first run downloads the catalogue into `~/.open_syndrome/`, shared by both.
+Both also write a definition of their own to `my_definitions/`, next to the notebooks,
+to show `opensyndrome` reading your local definitions alongside the catalogue.
 
 ## Python — `workshop.py`
 
