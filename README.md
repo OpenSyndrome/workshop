@@ -51,3 +51,5 @@ quarto render workshop.qmd    # writes workshop.html
 ```
 
 Or open it in RStudio / Positron / VS Code and run the chunks one by one.
+
+> Don't wanna install things on your machine? Use colab to follow the code. [Open in colab](https://colab.research.google.com/drive/1W72xz1El7y-JS0zwnJdEoo9-IYFE8osj?usp=sharing)
