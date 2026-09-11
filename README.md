@@ -32,6 +32,8 @@ uv run marimo run  --sandbox workshop.py   # app, code hidden
 
 On [molab](https://molab.marimo.io), upload `workshop.py` with `workshop_sia_bi.parquet`.
 
+> Don't wanna install things on your machine? Use marimo to follow the code. [![Open in molab](https://molab.marimo.io/molab-shield.svg)](https://molab.marimo.io/notebooks/nb_yAMMhdQm1tzkpCcirih3xX)
+
 ## R — `workshop.qmd`
 
 You will need R (from version 4.5.0) and the [Quarto](https://quarto.org) CLI (bundled with RStudio and Positron).
