@@ -1,20 +1,29 @@
 # Open Syndrome workshop
 
-Filtering outpatient data (SIA/SUS, Pernambuco, 2013-2017) with
-[Open Syndrome Definitions](https://opensyndrome.org). Same walkthrough in two
-notebooks: map your columns to OSD concepts, apply a definition, plot the matches,
-then do it again with the arbovirosis and Zika definitions from the
-[community catalogue](https://github.com/OpenSyndrome/definitions).
+These files are part of the workshop "Composable Case Definitions", where the Open Syndrome Definition format is showcased 
+in a real-world data setting.
 
-Run from the repository root — both read `workshop_sia_bi.parquet` from the working
-directory. The first run downloads the catalogue into `~/.open_syndrome/`, shared by both.
-Both also write a definition of their own to `my_definitions/`, next to the notebooks,
-to show `opensyndrome` reading your local definitions alongside the catalogue.
+Questions? Be in touch: opensyndrome@anapaulagomes.me
+
+## Data
+
+Outpatient (ambulatory) records from the Brazilian Unified Health System (SUS) for the state of Pernambuco (PE) from 2014 to 2017,
+the period of the Zika epidemic. The data come from DATASUS SIASUS (Sistema de Informações Ambulatoriais do SUS),
+and it is republished here with friendly English column names, a data dictionary, and pinned provenance.
+
+* Technical note: ftp://ftp.datasus.gov.br/dissemin/publicos/SIASUS/200801_/Doc/Informe_Tecnico_SIASUS_2019_07.pdf
+* Temporal coverage: 2014-01 to 2017-12 (by processing / competence month, the month each file was billed).
+* Extraction date: 2026-06-12
+
+Both notebooks, Python or R, read `workshop_sia_bi.parquet` from the working directory.
 
 ## Python — `workshop.py`
 
-[marimo](https://marimo.io) + [`opensyndrome`](https://github.com/OpenSyndrome/open-syndrome-python).
-Needs [uv](https://docs.astral.sh/uv/); dependencies are inline (PEP 723).
+You will need [uv](https://docs.astral.sh/uv/). The dependencies are inline (PEP 723), so you don't need to worry about it.
+We will use the following:
+
+* [marimo](https://marimo.io)
+* [opensyndrome](https://pypi.org/project/opensyndrome/)
 
 ```bash
 uv run marimo edit --sandbox workshop.py   # notebook
@@ -25,8 +34,10 @@ On [molab](https://molab.marimo.io), upload `workshop.py` with `workshop_sia_bi.
 
 ## R — `workshop.qmd`
 
-[Quarto](https://quarto.org) + [`opensyndrome`](https://github.com/OpenSyndrome/open-syndrome-r).
-Needs R and the Quarto CLI (bundled with RStudio and Positron).
+You will need R (from version 4.5.0) and the [Quarto](https://quarto.org) CLI (bundled with RStudio and Positron).
+We will use the following:
+
+* [opensyndrome-r](https://github.com/OpenSyndrome/open-syndrome-r)
 
 ```r
 install.packages(c("dplyr", "ggplot2", "jsonlite", "knitr", "nanoparquet", "remotes", "tibble", "tidyr", "yaml"))
